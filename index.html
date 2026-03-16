@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kávový deník</title>
+    
+    <!-- Dynamický PWA Manifest -->
+    <link rel="manifest" id="manifest-link">
+    <meta name="theme-color" content="#121212">
+
+    <!-- Připojení CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <h1>Kávový deník</h1>
+
+    <div class="card">
+        <label for="userSelect">Uživatel</label>
+        <select id="userSelect">
+            <option value="" disabled selected>Načítám uživatele...</option>
+        </select>
+    </div>
+
+    <div class="card" id="drinksContainer">
+        <label>Nápoje</label>
+        <div id="drinkList">
+            <!-- Dynamicky generováno -->
+        </div>
+    </div>
+
+    <div class="submit-container">
+        <button class="btn-submit" id="btnSubmit">Odeslat záznam</button>
+    </div>
+
+    <div id="toast" class="toast">Zpráva</div>
+
+    <!-- Připojení JS s atributem defer (spustí se po načtení DOM) -->
+    <script src="app.js" defer></script>
+</body>
+</html>

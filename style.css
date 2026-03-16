@@ -1,0 +1,160 @@
+:root {
+    --bg: #121212;
+    --surface: #1e1e1e;
+    --primary: #bb86fc;
+    --text: #e0e0e0;
+    --text-muted: #888;
+    --error: #cf6679;
+    --success: #03dac6;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    padding-bottom: 80px; /* Místo pro fixed button */
+}
+
+h1 {
+    font-size: 1.5rem;
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.card {
+    background-color: var(--surface);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+select {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--bg);
+    color: var(--text);
+    border: 1px solid #333;
+    border-radius: 8px;
+    font-size: 1rem;
+    outline: none;
+    appearance: none;
+}
+
+select:focus {
+    border-color: var(--primary);
+}
+
+.drink-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #333;
+}
+
+.drink-item:last-child {
+    border-bottom: none;
+}
+
+.drink-name {
+    font-size: 1.1rem;
+    flex-grow: 1;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.btn-control {
+    background-color: var(--bg);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.btn-control:active {
+    background-color: var(--primary);
+    color: var(--bg);
+}
+
+.drink-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    min-width: 24px;
+    text-align: center;
+}
+
+.submit-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 16px;
+    background-color: var(--bg);
+    border-top: 1px solid #333;
+}
+
+.btn-submit {
+    width: 100%;
+    background-color: var(--primary);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3);
+}
+
+.btn-submit:active {
+    opacity: 0.8;
+}
+
+.toast {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 8px;
+    color: #000;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.toast.show {
+    opacity: 1;
+}
+.toast.success { background-color: var(--success); }
+.toast.error { background-color: var(--error); }
