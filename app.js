@@ -115,12 +115,34 @@ function updateDrink(type, delta) {
 // --- API KOMUNIKACE ---
 async function loadInitialData() {
     try {
-        // Fallback pro lokální testování, pokud reálné API hodí CORS chybu
+        // 1. Stažení seznamu uživatelů
+        const resUsers = await fetch(`${API_BASE}?cmd=getPeopleList`);
+        if (!resUsers.ok) throw new Error('API chyba - uživatelé');
+        const realUsers = await resUsers.json();
+        
+        // 2. Stažení seznamu typů nápojů
+        const resTypes = await fetch(`${API_BASE}?cmd=getTypesList`);
+        if (!resTypes.ok) throw new Error('API chyba - nápoje');
+        const realTypes = await resTypes.json();
+
+        // 3. Naplnění aplikace reálnými daty
+        populateUsers(realUsers);
+        
+        currentDrinks = {};
+        realTypes.forEach(drink => {
+            // Ošetření struktury dat (kdyby vracel pole objektů místo pole stringů)
+            const drinkName = drink.type || drink.name || drink; 
+            currentDrinks[drinkName] = 0;
+        });
+        
+        renderDrinks();
+
+    } catch (error) {
+        console.error("Kritická chyba spojení s API, nahazuji fallback:", error);
+        // Pokud školní API selže (výpadek, CORS blokace), appka nespadne, ale použije lokální data
         populateUsers(DEFAULT_USERS);
         DEFAULT_DRINKS.forEach(d => currentDrinks[d] = 0);
         renderDrinks();
-    } catch (error) {
-        console.error("API Error:", error);
     }
 }
 
