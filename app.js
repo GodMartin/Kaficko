@@ -93,6 +93,51 @@ function populateUsers(usersData) {
     }
 }
 
+
+// --- OFFLINE FRONT (Local Storage) ---
+function saveToOfflineQueue(payload) {
+    // Načte existující frontu nebo vytvoří prázdné pole
+    let queue = JSON.parse(localStorage.getItem('coffeeSyncQueue') || '[]');
+    queue.push(payload);
+    localStorage.setItem('coffeeSyncQueue', JSON.stringify(queue));
+}
+
+async function syncOfflineData() {
+    // Pokud prohlížeč ví, že je offline, ani se nesnažíme
+    if (!navigator.onLine) return;
+
+    let queue = JSON.parse(localStorage.getItem('coffeeSyncQueue') || '[]');
+    if (queue.length === 0) return;
+
+    let remainingQueue = [];
+    let syncedCount = 0;
+
+    for (let payload of queue) {
+        try {
+            const response = await fetch(`${API_BASE}?cmd=saveDrinks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error('API chyba při synchronizaci');
+            syncedCount++; // Úspěšně odesláno, nevracíme do fronty
+        } catch (error) {
+            console.error("Synchronizace selhala, vracím do fronty:", error);
+            remainingQueue.push(payload); // API stále nejede, necháme na později
+        }
+    }
+
+    // Uložíme zbytek fronty (případně prázdné pole, pokud prošlo vše)
+    localStorage.setItem('coffeeSyncQueue', JSON.stringify(remainingQueue));
+    
+    if (syncedCount > 0) {
+        showToast(`Synchronizováno ${syncedCount} offline záznamů!`);
+    }
+}
+
+
+
 // --- API KOMUNIKACE ---
 async function loadInitialData() {
     try {
@@ -144,6 +189,15 @@ async function submitData() {
 
     saveLastUser(userId);
 
+    // Detekce fyzického odpojení od sítě (vypnutá WiFi/Data)
+    if (!navigator.onLine) {
+        saveToOfflineQueue(payload);
+        showToast('Jsi offline. Uloženo lokálně pro pozdější odeslání.');
+        Object.keys(currentDrinks).forEach(k => currentDrinks[k] = 0);
+        renderDrinks();
+        return;
+    }
+
     try {
         const response = await fetch(`${API_BASE}?cmd=saveDrinks`, {
             method: 'POST',
@@ -151,15 +205,17 @@ async function submitData() {
             body: JSON.stringify(payload)
         });
 
-        if (!response.ok) throw new Error('Network error');
+        if (!response.ok) throw new Error('Server hlásí chybu');
         
         showToast('Úspěšně uloženo!');
         Object.keys(currentDrinks).forEach(k => currentDrinks[k] = 0);
         renderDrinks();
 
     } catch (error) {
-        console.error("Submit error:", error);
-        showToast('Uloženo (Simulace - API nedostupné)');
+        // Záchyt pro případ, kdy síť sice je, ale učitelův server spadl (Timeout / CORS)
+        console.error("Chyba spojení se serverem:", error);
+        saveToOfflineQueue(payload);
+        showToast('Server je nedostupný. Uloženo lokálně pro pozdější odeslání.', true);
         Object.keys(currentDrinks).forEach(k => currentDrinks[k] = 0);
         renderDrinks();
     }
@@ -168,3 +224,8 @@ async function submitData() {
 // --- START ---
 loadInitialData();
 btnSubmit.addEventListener('click', submitData);
+// Posluchač na událost prohlížeče "připojeno k síti"
+window.addEventListener('online', syncOfflineData);
+
+// Pokus o synchronizaci rovnou při startu aplikace (pokud zůstalo něco viset z minula)
+syncOfflineData();
