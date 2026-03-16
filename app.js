@@ -1,5 +1,4 @@
-const API_BASE = '[https://crm.skch.cz/ajax0/procedure.php](https://crm.skch.cz/ajax0/procedure.php)';
-
+const API_BASE = 'https://crm.skch.cz/ajax0/procedure.php';
 // Výchozí data (fallback, pokud API nepojede kvůli CORS nebo výpadku)
 const DEFAULT_DRINKS = ["Mléko", "Espresso", "Coffe", "Long", "Doppio+"];
 const DEFAULT_USERS = [
