@@ -1,5 +1,7 @@
+// --- KONFIGURACE ---
 const API_BASE = 'https://crm.skch.cz/ajax0/procedure.php';
-// Výchozí data (fallback, pokud API nepojede kvůli CORS nebo výpadku)
+
+// Výchozí data (fallback)
 const DEFAULT_DRINKS = ["Mléko", "Espresso", "Coffe", "Long", "Doppio+"];
 const DEFAULT_USERS = [
     { id: "1", name: "Jan Novák" },
@@ -15,45 +17,6 @@ const userSelect = document.getElementById('userSelect');
 const drinkList = document.getElementById('drinkList');
 const btnSubmit = document.getElementById('btnSubmit');
 const toastEl = document.getElementById('toast');
-
-// --- PWA INICIALIZACE ---
-function initPWA() {
-    // 1. Vytvoření Manifestu jako Data URI
-    const manifest = {
-        name: "Kávový deník",
-        short_name: "Káva",
-        start_url: ".",
-        display: "standalone",
-        background_color: "#121212",
-        theme_color: "#121212",
-        icons: [{
-            src: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdib3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2JiODZmYyIvPjwvc3ZnPg==",
-            sizes: "192x192",
-            type: "image/svg+xml"
-        }]
-    };
-    const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/manifest+json'});
-    const manifestLink = document.getElementById('manifest-link');
-    if (manifestLink) {
-        manifestLink.href = URL.createObjectURL(manifestBlob);
-    }
-
-    // 2. Vytvoření a registrace Service Workeru
-    const swCode = `
-        const CACHE_NAME = 'coffee-v1';
-        self.addEventListener('install', e => self.skipWaiting());
-        self.addEventListener('activate', e => self.clients.claim());
-        self.addEventListener('fetch', e => {
-            e.respondWith(fetch(e.request).catch(() => new Response('Jsi offline, ale appka běží.')));
-        });
-    `;
-    const swBlob = new Blob([swCode], {type: 'application/javascript'});
-    const swUrl = URL.createObjectURL(swBlob);
-    
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register(swUrl).catch(err => console.error("SW Reg Error:", err));
-    }
-}
 
 // --- STORAGE & COOKIES ---
 function saveLastUser(userId) {
@@ -81,10 +44,8 @@ function renderDrinks() {
     drinkList.innerHTML = '';
     Object.keys(currentDrinks).forEach(type => {
         const val = currentDrinks[type];
-        
         const item = document.createElement('div');
         item.className = 'drink-item';
-        
         item.innerHTML = `
             <div class="drink-name">${type}</div>
             <div class="controls">
@@ -111,45 +72,17 @@ function updateDrink(type, delta) {
     document.getElementById(`val-${type}`).textContent = newVal;
 }
 
-// --- API KOMUNIKACE ---
-async function loadInitialData() {
-    try {
-        // 1. Stažení seznamu uživatelů
-        const resUsers = await fetch(`${API_BASE}?cmd=getPeopleList`);
-        if (!resUsers.ok) throw new Error('API chyba - uživatelé');
-        const realUsers = await resUsers.json();
-        
-        // 2. Stažení seznamu typů nápojů
-        const resTypes = await fetch(`${API_BASE}?cmd=getTypesList`);
-        if (!resTypes.ok) throw new Error('API chyba - nápoje');
-        const realTypes = await resTypes.json();
-
-        // 3. Naplnění aplikace reálnými daty
-        populateUsers(realUsers);
-        
-        currentDrinks = {};
-        realTypes.forEach(drink => {
-            // Ošetření struktury dat (kdyby vracel pole objektů místo pole stringů)
-            const drinkName = drink.type || drink.name || drink; 
-            currentDrinks[drinkName] = 0;
-        });
-        
-        renderDrinks();
-
-    } catch (error) {
-        console.error("Kritická chyba spojení s API, nahazuji fallback:", error);
-        // Pokud školní API selže (výpadek, CORS blokace), appka nespadne, ale použije lokální data
-        populateUsers(DEFAULT_USERS);
-        DEFAULT_DRINKS.forEach(d => currentDrinks[d] = 0);
-        renderDrinks();
-    }
-}
-
-function populateUsers(users) {
+// --- DATA LOGIKA ---
+function populateUsers(usersData) {
     userSelect.innerHTML = '<option value="" disabled>Vyberte uživatele</option>';
-    users.forEach(u => {
+    
+    // Ošetření: Pokud učitel pošle objekt, převedeme ho na pole. Pokud pole, necháme ho být.
+    const usersArray = Array.isArray(usersData) ? usersData : Object.values(usersData);
+
+    usersArray.forEach(u => {
         const opt = document.createElement('option');
-        opt.value = u.id;
+        // Ošetření: Učitel posílá "ID", my dříve měli "id"
+        opt.value = u.ID || u.id;
         opt.textContent = u.name;
         userSelect.appendChild(opt);
     });
@@ -157,6 +90,43 @@ function populateUsers(users) {
     const savedUser = getLastUser();
     if (savedUser && Array.from(userSelect.options).some(o => o.value === savedUser)) {
         userSelect.value = savedUser;
+    }
+}
+
+// --- API KOMUNIKACE ---
+async function loadInitialData() {
+    try {
+        // 1. Uživatelé
+        const resUsers = await fetch(`${API_BASE}?cmd=getPeopleList`);
+        if (!resUsers.ok) throw new Error('API chyba - uživatelé');
+        const realUsers = await resUsers.json();
+
+        // 2. Nápoje
+        const resTypes = await fetch(`${API_BASE}?cmd=getTypesList`);
+        if (!resTypes.ok) throw new Error('API chyba - nápoje');
+        const realTypesData = await resTypes.json();
+
+        populateUsers(realUsers);
+
+        currentDrinks = {};
+        
+        // Ošetření struktury nápojů (převod z objektu na pole, pokud je třeba)
+        // Převod objektu z API na iterovatelné pole
+        const typesArray = Object.values(realTypesData);
+        
+        typesArray.forEach(drink => {
+            // Natvrdo bereme klíč "typ" přesně podle učitelova JSONu
+            const drinkName = drink.typ;
+            currentDrinks[drinkName] = 0;
+        });
+
+        renderDrinks();
+
+    } catch (error) {
+        console.error("Kritická chyba, nahazuji fallback:", error);
+        populateUsers(DEFAULT_USERS);
+        DEFAULT_DRINKS.forEach(d => currentDrinks[d] = 0);
+        renderDrinks();
     }
 }
 
@@ -189,7 +159,6 @@ async function submitData() {
 
     } catch (error) {
         console.error("Submit error:", error);
-        console.log("Odesílaný payload pro kontrolu:", JSON.stringify(payload, null, 2));
         showToast('Uloženo (Simulace - API nedostupné)');
         Object.keys(currentDrinks).forEach(k => currentDrinks[k] = 0);
         renderDrinks();
@@ -197,6 +166,5 @@ async function submitData() {
 }
 
 // --- START ---
-initPWA();
 loadInitialData();
 btnSubmit.addEventListener('click', submitData);
